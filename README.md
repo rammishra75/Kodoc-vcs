@@ -1,0 +1,2 @@
+# Kodoc
+Git for documents.
