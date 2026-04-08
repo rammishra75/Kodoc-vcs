@@ -3,6 +3,7 @@ import Signin from "./pages/auth/Signin";
 import Signup from "./pages/auth/Signup";
 import TextEditor from "./pages/user/Dashboard";
 import Preview from "./pages/user/Preview";
+import LandingPage from "./pages/LandingPage";
 function App() {
   return <>
     <BrowserRouter>
@@ -11,6 +12,7 @@ function App() {
         <Route path="/signin" element={<Signin></Signin>} />
         <Route path="/dashboard" element={<TextEditor/>} />
         <Route path="/preview" element={<Preview/>} />
+        <Route path="/" element={<LandingPage/>} />
       </Routes>
     </BrowserRouter>
 

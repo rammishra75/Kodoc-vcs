@@ -1,10 +1,8 @@
 import React from 'react'
-import {useDocStore} from '@/store/useDocStore'
 const Preview = () => {
-    const data = useDocStore((state)=>state.data)
+    const data = useDocStore()
   return (
     <div>
-      {data}
     </div>
   )
 }
