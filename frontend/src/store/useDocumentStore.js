@@ -38,6 +38,14 @@ export const useDocumentStore = create((set, get) => ({
         content: '<p>New document</p>',
         created: new Date().toISOString(),
         lastModified: new Date().toISOString(),
+        versions: [
+          {
+            id: `${Date.now()}-v`,
+            content: '<p>New document</p>',
+            savedAt: new Date().toISOString(),
+            label: 'Initial version',
+          },
+        ],
       };
 
       // Try to save to backend first
@@ -74,9 +82,28 @@ export const useDocumentStore = create((set, get) => ({
     }
   },
 
+  updateDocumentContent: async (documentId, content) => {
+    set((state) => ({
+      documents: state.documents.map(doc =>
+        doc.id === documentId
+          ? { ...doc, content, lastModified: new Date().toISOString() }
+          : doc
+      ),
+    }));
+
+    localStorage.setItem('documents', JSON.stringify(get().documents));
+  },
+
   saveDocument: async (documentId, content) => {
     try {
       set({ saving: true, error: null });
+
+      const versionEntry = {
+        id: `${Date.now()}-v`,
+        content,
+        savedAt: new Date().toISOString(),
+        label: 'Saved version',
+      };
 
       const updatedDoc = {
         content,
@@ -87,7 +114,10 @@ export const useDocumentStore = create((set, get) => ({
       try {
         const token = localStorage.getItem("token");
         if (token && API_BASE_URL) {
-          await axios.put(`${API_BASE_URL}/api/documents/${documentId}`, updatedDoc, {
+          await axios.put(`${API_BASE_URL}/api/documents/${documentId}`, {
+            ...updatedDoc,
+            versions: (get().documents.find(doc => doc.id === documentId)?.versions || []).concat(versionEntry),
+          }, {
             headers: { Authorization: `Bearer ${token}` }
           });
         }
@@ -99,7 +129,11 @@ export const useDocumentStore = create((set, get) => ({
       set((state) => ({
         documents: state.documents.map(doc =>
           doc.id === documentId
-            ? { ...doc, ...updatedDoc }
+            ? {
+              ...doc,
+              ...updatedDoc,
+              versions: [versionEntry].concat(doc.versions || []),
+            }
             : doc
         ),
         saving: false,
@@ -113,6 +147,71 @@ export const useDocumentStore = create((set, get) => ({
       set({
         error: err.message || "Failed to save document",
         saving: false,
+      });
+      throw err;
+    }
+  },
+
+  rollbackDocumentVersion: async (documentId, versionId) => {
+    try {
+      set({ loading: true, error: null });
+
+      const currentDoc = get().documents.find(doc => doc.id === documentId);
+      if (!currentDoc) {
+        throw new Error('Document not found');
+      }
+
+      const version = (currentDoc.versions || []).find(v => v.id === versionId);
+      if (!version) {
+        throw new Error('Version not found');
+      }
+
+      const rollbackSnapshot = {
+        id: `${Date.now()}-v`,
+        content: currentDoc.content,
+        savedAt: new Date().toISOString(),
+        label: 'Snapshot before rollback',
+      };
+
+      const updatedDoc = {
+        content: version.content,
+        lastModified: new Date().toISOString(),
+      };
+
+      // Try to save to backend first
+      try {
+        const token = localStorage.getItem("token");
+        if (token && API_BASE_URL) {
+          await axios.put(`${API_BASE_URL}/api/documents/${documentId}`, {
+            ...updatedDoc,
+            versions: [rollbackSnapshot].concat(currentDoc.versions || []),
+          }, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        }
+      } catch (backendError) {
+        console.warn('Backend not available, using local storage:', backendError.message);
+      }
+
+      set((state) => ({
+        documents: state.documents.map(doc =>
+          doc.id === documentId
+            ? {
+              ...doc,
+              ...updatedDoc,
+              versions: [rollbackSnapshot].concat(doc.versions || []),
+            }
+            : doc
+        ),
+        loading: false,
+      }));
+
+      const { documents } = get();
+      localStorage.setItem('documents', JSON.stringify(documents));
+    } catch (err) {
+      set({
+        error: err.message || "Failed to rollback version",
+        loading: false,
       });
       throw err;
     }

@@ -32,11 +32,14 @@ const TextEditor = () => {
     setCurrentDocument,
     createDocument,
     saveDocument,
+    updateDocumentContent,
+    rollbackDocumentVersion,
     deleteDocument,
     loadDocuments,
-    getCurrentDocument,
     clearError,
   } = useDocumentStore()
+
+  const currentDocument = documents.find(doc => doc.id === currentDocumentId) || null
 
   // Local UI state
   const [newDocumentName, setNewDocumentName] = useState('')
@@ -91,7 +94,7 @@ const TextEditor = () => {
     extensions: [
       StarterKit,
     ],
-    content: getCurrentDocument()?.content || '<p>Hello World! 🌍️</p>',
+    content: currentDocument?.content || '<p>Hello World! 🌍️</p>',
     onCreate: ({ editor }) => {
       console.log('Editor created successfully')
       setIsReady(true)
@@ -101,9 +104,9 @@ const TextEditor = () => {
       console.log('Editor updated:', editor.getHTML())
       updateActiveStates(editor)
 
-      // Auto-save current document
+      // Keep the document content current while editing.
       if (currentDocumentId) {
-        saveDocument(currentDocumentId, editor.getHTML()).catch(err => {
+        updateDocumentContent(currentDocumentId, editor.getHTML()).catch(err => {
           console.error('Auto-save failed:', err)
         })
       }
@@ -120,7 +123,7 @@ const TextEditor = () => {
   // Update editor content when current document changes
   useEffect(() => {
     if (editor && currentDocumentId) {
-      const currentDoc = getCurrentDocument()
+      const currentDoc = documents.find(doc => doc.id === currentDocumentId)
       if (currentDoc) {
         editor.commands.setContent(currentDoc.content)
       }
@@ -166,6 +169,21 @@ const TextEditor = () => {
       alert('Document saved successfully!')
     } catch (err) {
       console.error('Failed to save document:', err)
+      // Error is handled by the store
+    }
+  }
+
+  const handleRollbackVersion = async (versionId) => {
+    if (!currentDocumentId || !editor) return
+
+    const version = currentDocument?.versions?.find(v => v.id === versionId)
+    if (!version) return
+
+    try {
+      await rollbackDocumentVersion(currentDocumentId, versionId)
+      editor.commands.setContent(version.content)
+    } catch (err) {
+      console.error('Failed to rollback version:', err)
       // Error is handled by the store
     }
   }
@@ -306,10 +324,21 @@ const TextEditor = () => {
               <div>
                 <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Editor</p>
                 <h2 className="mt-2 text-3xl font-semibold text-slate-950">Write and save documents</h2>
+                <p className="mt-2 text-sm text-slate-600">Save a version manually, then rollback to any saved snapshot below.</p>
               </div>
-              <div className="inline-flex items-center gap-3 rounded-full bg-slate-50 px-4 py-2 text-sm text-slate-700 shadow-sm">
-                <span>{currentDocumentId ? 'Document loaded' : 'Select a document'}</span>
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  size="sm"
+                  className="rounded-full px-4 text-sm shadow-sm"
+                  onClick={handleSaveDocument}
+                  disabled={!currentDocumentId || saving}
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  Save version
+                </Button>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                  {currentDocument?.versions?.length ?? 0} versions
+                </span>
               </div>
             </div>
 
@@ -394,6 +423,41 @@ const TextEditor = () => {
 
             <div className="mt-6 rounded-[1.75rem] border border-slate-200/80 bg-slate-50 p-6 shadow-sm">
               <EditorContent editor={editor} className="min-h-80 focus:outline-none" />
+            </div>
+
+            <div className="mt-6 rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 shadow-[0_25px_75px_-45px_rgba(15,23,42,0.18)]">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900">Version history</h3>
+                  <p className="mt-1 text-sm text-slate-600">Choose a saved snapshot to rollback the editor content.</p>
+                </div>
+                <span className="text-sm text-slate-500">{currentDocument?.versions?.length ?? 0} saved versions</span>
+              </div>
+
+              {currentDocument?.versions?.length ? (
+                <div className="space-y-3">
+                  {currentDocument.versions.map((version) => (
+                    <div key={version.id} className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200/80 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="font-semibold text-slate-900">{version.label}</p>
+                        <p className="text-sm text-slate-500">{new Date(version.savedAt).toLocaleString()}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full px-4 text-sm"
+                        onClick={() => handleRollbackVersion(version.id)}
+                      >
+                        Rollback
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[1.5rem] border border-dashed border-slate-200/80 bg-slate-50 p-4 text-sm text-slate-500">
+                  No saved versions yet. Click Save version to create one.
+                </div>
+              )}
             </div>
           </div>
         </main>
