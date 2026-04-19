@@ -3,7 +3,7 @@ import axios from "axios";
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 export const useAuthStore = create((set) => ({
-  user: null,
+  user: JSON.parse(localStorage.getItem("user")) || null,
   token: localStorage.getItem("token") || null,
   isAuthenticated: Boolean(localStorage.getItem("token")),
   loading: false,
@@ -20,6 +20,7 @@ export const useAuthStore = create((set) => ({
         error: null,
       });
       localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
     } catch (err) {
       set({
         error: err.response?.data?.message || "Signup failed",
@@ -39,6 +40,7 @@ export const useAuthStore = create((set) => ({
         error: null,
       });
       localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
     } catch (err) {
       set({
         error: err.response?.data?.message || "Signin failed",
@@ -53,5 +55,6 @@ export const useAuthStore = create((set) => ({
       isAuthenticated: false,
     });
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
   },
 }));
