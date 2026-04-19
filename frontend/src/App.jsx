@@ -4,6 +4,7 @@ import Signup from "./pages/auth/Signup";
 import Dashboard from "./pages/user/Dashboard";
 import Preview from "./pages/user/Preview";
 import LandingPage from "./pages/LandingPage";
+import EditorPage from "./pages/user/EditorPage";
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/signin" element={<Signin />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/editor/:id" element={<EditorPage />} />
         <Route path="/preview" element={<Preview />} />
         <Route path="/" element={<LandingPage />} />
       </Routes>
