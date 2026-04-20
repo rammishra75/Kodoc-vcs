@@ -47,15 +47,14 @@ export const useVersionStore = create((set) => ({
     try {
       set({ saving: true, error: null });
       const token = localStorage.getItem("token");
-      const state = useVersionStore.getState();
-      const latestVersion = state.versions[0];
+      const latestVersion = useVersionStore.getState().versions[0];
       const commitMessage = (commitMessageInput || "").trim() || `Save ${new Date().toLocaleString()}`;
 
       const res = await axios.post(`${API_BASE_URL}/api/documents/${docId}/versions`, { content, commitMessage }, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (!res.data.saved) {
+      if (res.data.saved === false) {
         set({
           saving: false,
           currentContent: latestVersion?.content ?? content,
@@ -63,7 +62,7 @@ export const useVersionStore = create((set) => ({
         return { saved: false, message: res.data.message };
       }
 
-      const newVersion = res.data.version;
+      const newVersion = res.data.version || res.data;
 
       set((state) => ({
         versions: [newVersion, ...state.versions], // Backend sorts newest first, we add to top
@@ -93,7 +92,7 @@ export const useVersionStore = create((set) => ({
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (!res.data.saved) {
+      if (res.data.saved === false) {
         set({
           saving: false,
           previewVersionId: null,
