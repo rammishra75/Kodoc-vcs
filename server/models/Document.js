@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+// Document model for storing document metadata and version information
 const documentSchema = new mongoose.Schema(
   {
     title: {

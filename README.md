@@ -2,6 +2,7 @@
 Git for documents.
 # Kodoc - Git for Documents
 
+<!-- Updated README for improved documentation and clarity -->
 > A minimalist document editor with powerful version control. Like Git, but for your documents.
 
 ## 🎯 Overview
